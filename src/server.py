@@ -368,22 +368,22 @@ if __name__ == "__main__":
                     "id": request.get("id"),
                     "result": {"tools": tools}
                 })
-                     elif request.get("method") == "tools/call":
-                         tool_name = request.get("params", {}).get("name")
-                         tool_args = request.get("params", {}).get("arguments", {})
-                         
-                         if tool_name == "search_tracks":
-                             result = search_tracks_http(**tool_args)
-                         elif tool_name == "search_artists":
-                             result = search_artists_http(**tool_args)
-                         elif tool_name == "get_artist_top_tracks":
-                             result = get_artist_top_tracks_http(**tool_args)
-                         else:
-                             return JSONResponse(content={
-                                 "jsonrpc": "2.0",
-                                 "id": request.get("id"),
-                                 "error": {"code": -32601, "message": f"Tool '{tool_name}' not found"}
-                             })
+            elif request.get("method") == "tools/call":
+                tool_name = request.get("params", {}).get("name")
+                tool_args = request.get("params", {}).get("arguments", {})
+                
+                if tool_name == "search_tracks":
+                    result = search_tracks_http(**tool_args)
+                elif tool_name == "search_artists":
+                    result = search_artists_http(**tool_args)
+                elif tool_name == "get_artist_top_tracks":
+                    result = get_artist_top_tracks_http(**tool_args)
+                else:
+                    return JSONResponse(content={
+                        "jsonrpc": "2.0",
+                        "id": request.get("id"),
+                        "error": {"code": -32601, "message": f"Tool '{tool_name}' not found"}
+                    })
                 
                 return JSONResponse(content={
                     "jsonrpc": "2.0",
