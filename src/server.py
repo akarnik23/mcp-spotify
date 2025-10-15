@@ -1,0 +1,474 @@
+#!/usr/bin/env python3
+"""
+Spotify MCP Server
+A FastMCP server that provides access to Spotify's music data.
+"""
+
+import os
+import json
+import time
+import httpx
+from typing import Dict, Any, Optional
+from fastmcp import FastMCP
+
+# Create the FastMCP server
+mcp = FastMCP("Spotify MCP Server")
+
+# Spotify API configuration
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+SPOTIFY_API_BASE = "https://api.spotify.com/v1"
+SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
+
+# Global variable to store access token
+access_token = None
+token_expires_at = 0
+
+def get_spotify_token() -> Optional[str]:
+    """Get a fresh Spotify access token using client credentials flow."""
+    global access_token, token_expires_at
+    
+    # Check if we have a valid token
+    if access_token and time.time() < token_expires_at:
+        return access_token
+    
+    if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
+        return None
+    
+    try:
+        # Request access token
+        auth_response = httpx.post(
+            SPOTIFY_TOKEN_URL,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": SPOTIFY_CLIENT_ID,
+                "client_secret": SPOTIFY_CLIENT_SECRET,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=10.0
+        )
+        auth_response.raise_for_status()
+        
+        token_data = auth_response.json()
+        access_token = token_data["access_token"]
+        expires_in = token_data.get("expires_in", 3600)
+        token_expires_at = time.time() + expires_in - 60  # Refresh 1 minute early
+        
+        return access_token
+        
+    except Exception as e:
+        print(f"Error getting Spotify token: {e}")
+        return None
+
+def make_spotify_request(endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Make an authenticated request to the Spotify API."""
+    token = get_spotify_token()
+    if not token:
+        return {"error": "Unable to authenticate with Spotify API"}
+    
+    try:
+        response = httpx.get(
+            f"{SPOTIFY_API_BASE}{endpoint}",
+            headers={"Authorization": f"Bearer {token}"},
+            params=params or {},
+            timeout=15.0
+        )
+        response.raise_for_status()
+        return response.json()
+        
+    except httpx.RequestError as e:
+        return {"error": f"Request failed: {str(e)}"}
+    except httpx.HTTPStatusError as e:
+        return {"error": f"Spotify API error: {e.response.status_code} - {e.response.text}"}
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
+
+# Undecorated functions for HTTP endpoint
+def search_tracks_http(query: str, limit: int = 10) -> str:
+    """Search for tracks on Spotify."""
+    if not query.strip():
+        return json.dumps({"error": "Query cannot be empty"})
+    
+    # Limit to reasonable range
+    limit = max(1, min(limit, 50))
+    
+    result = make_spotify_request("/search", {
+        "q": query,
+        "type": "track",
+        "limit": limit
+    })
+    
+    if "error" in result:
+        return json.dumps(result)
+    
+    # Format the response
+    tracks = result.get("tracks", {}).get("items", [])
+    formatted_tracks = []
+    
+    for track in tracks:
+        artists = [artist["name"] for artist in track.get("artists", [])]
+        formatted_track = {
+            "name": track.get("name", "Unknown"),
+            "artists": artists,
+            "album": track.get("album", {}).get("name", "Unknown"),
+            "duration_ms": track.get("duration_ms", 0),
+            "popularity": track.get("popularity", 0),
+            "preview_url": track.get("preview_url"),
+            "external_urls": track.get("external_urls", {}),
+            "id": track.get("id")
+        }
+        formatted_tracks.append(formatted_track)
+    
+    return json.dumps({
+        "tracks": formatted_tracks,
+        "total": result.get("tracks", {}).get("total", 0)
+    })
+
+def search_artists_http(query: str, limit: int = 10) -> str:
+    """Search for artists on Spotify."""
+    if not query.strip():
+        return json.dumps({"error": "Query cannot be empty"})
+    
+    # Limit to reasonable range
+    limit = max(1, min(limit, 50))
+    
+    result = make_spotify_request("/search", {
+        "q": query,
+        "type": "artist",
+        "limit": limit
+    })
+    
+    if "error" in result:
+        return json.dumps(result)
+    
+    # Format the response
+    artists = result.get("artists", {}).get("items", [])
+    formatted_artists = []
+    
+    for artist in artists:
+        formatted_artist = {
+            "name": artist.get("name", "Unknown"),
+            "genres": artist.get("genres", []),
+            "popularity": artist.get("popularity", 0),
+            "followers": artist.get("followers", {}).get("total", 0),
+            "external_urls": artist.get("external_urls", {}),
+            "id": artist.get("id"),
+            "images": artist.get("images", [])
+        }
+        formatted_artists.append(formatted_artist)
+    
+    return json.dumps({
+        "artists": formatted_artists,
+        "total": result.get("artists", {}).get("total", 0)
+    })
+
+def get_artist_top_tracks_http(artist_id: str, market: str = "US") -> str:
+    """Get the top tracks for a specific artist."""
+    if not artist_id.strip():
+        return json.dumps({"error": "Artist ID cannot be empty"})
+    
+    result = make_spotify_request(f"/artists/{artist_id}/top-tracks", {
+        "market": market
+    })
+    
+    if "error" in result:
+        return json.dumps(result)
+    
+    # Format the response
+    tracks = result.get("tracks", [])
+    formatted_tracks = []
+    
+    for track in tracks:
+        artists = [artist["name"] for artist in track.get("artists", [])]
+        formatted_track = {
+            "name": track.get("name", "Unknown"),
+            "artists": artists,
+            "album": track.get("album", {}).get("name", "Unknown"),
+            "duration_ms": track.get("duration_ms", 0),
+            "popularity": track.get("popularity", 0),
+            "preview_url": track.get("preview_url"),
+            "external_urls": track.get("external_urls", {}),
+            "id": track.get("id")
+        }
+        formatted_tracks.append(formatted_track)
+    
+    return json.dumps({"tracks": formatted_tracks})
+
+def get_recommendations_http(seed_artists: str = "", seed_genres: str = "", seed_tracks: str = "", limit: int = 20) -> str:
+    """Get track recommendations based on artists, genres, or tracks."""
+    # Limit to reasonable range
+    limit = max(1, min(limit, 100))
+    
+    # Build seed parameters
+    params = {"limit": limit}
+    
+    if seed_artists:
+        params["seed_artists"] = seed_artists
+    if seed_genres:
+        params["seed_genres"] = seed_genres
+    if seed_tracks:
+        params["seed_tracks"] = seed_tracks
+    
+    # At least one seed is required
+    if not any([seed_artists, seed_genres, seed_tracks]):
+        return json.dumps({"error": "At least one seed (artists, genres, or tracks) is required"})
+    
+    result = make_spotify_request("/recommendations", params)
+    
+    if "error" in result:
+        return json.dumps(result)
+    
+    # Format the response
+    tracks = result.get("tracks", [])
+    formatted_tracks = []
+    
+    for track in tracks:
+        artists = [artist["name"] for artist in track.get("artists", [])]
+        formatted_track = {
+            "name": track.get("name", "Unknown"),
+            "artists": artists,
+            "album": track.get("album", {}).get("name", "Unknown"),
+            "duration_ms": track.get("duration_ms", 0),
+            "popularity": track.get("popularity", 0),
+            "preview_url": track.get("preview_url"),
+            "external_urls": track.get("external_urls", {}),
+            "id": track.get("id")
+        }
+        formatted_tracks.append(formatted_track)
+    
+    return json.dumps({"tracks": formatted_tracks})
+
+@mcp.tool()
+def search_tracks(query: str, limit: int = 10) -> str:
+    """Search for tracks on Spotify.
+    
+    Args:
+        query: Search query (song name, artist, lyrics, etc.)
+        limit: Number of results to return (default: 10, max: 50)
+    
+    Returns:
+        JSON string with track data
+    """
+    return search_tracks_http(query, limit)
+
+@mcp.tool()
+def search_artists(query: str, limit: int = 10) -> str:
+    """Search for artists on Spotify.
+    
+    Args:
+        query: Search query (artist name, genre, etc.)
+        limit: Number of results to return (default: 10, max: 50)
+    
+    Returns:
+        JSON string with artist data
+    """
+    return search_artists_http(query, limit)
+
+@mcp.tool()
+def get_artist_top_tracks(artist_id: str, market: str = "US") -> str:
+    """Get the top tracks for a specific artist.
+    
+    Args:
+        artist_id: Spotify artist ID
+        market: Market code (default: "US")
+    
+    Returns:
+        JSON string with top tracks data
+    """
+    return get_artist_top_tracks_http(artist_id, market)
+
+@mcp.tool()
+def get_recommendations(seed_artists: str = "", seed_genres: str = "", seed_tracks: str = "", limit: int = 20) -> str:
+    """Get track recommendations based on artists, genres, or tracks.
+    
+    Args:
+        seed_artists: Comma-separated artist IDs
+        seed_genres: Comma-separated genre names
+        seed_tracks: Comma-separated track IDs
+        limit: Number of recommendations (default: 20, max: 100)
+    
+    Returns:
+        JSON string with recommended tracks
+    """
+    return get_recommendations_http(seed_artists, seed_genres, seed_tracks, limit)
+
+if __name__ == "__main__":
+    # Run in HTTP mode for testing
+    import uvicorn
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+    from fastapi.middleware.cors import CORSMiddleware
+    
+    # Create FastAPI app
+    app = FastAPI()
+    
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    @app.get("/")
+    async def health_check():
+        return {"status": "ok", "server": "Spotify MCP Server"}
+    
+    @app.post("/")
+    @app.post("/mcp")
+    async def mcp_endpoint(request: dict):
+        """Handle MCP requests via HTTP POST"""
+        try:
+            print(f"Received request: {request}")
+            
+            if request.get("method") == "initialize":
+                return JSONResponse(content={
+                    "jsonrpc": "2.0",
+                    "id": request.get("id"),
+                    "result": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {"tools": {}},
+                        "serverInfo": {"name": "Spotify MCP Server", "version": "1.0.0"}
+                    }
+                })
+            elif request.get("method") == "tools/list":
+                tools = [
+                    {
+                        "name": "search_tracks", 
+                        "description": "Search for tracks on Spotify", 
+                        "inputSchema": {
+                            "type": "object", 
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": "Search query (song name, artist, lyrics, etc.)"
+                                },
+                                "limit": {
+                                    "type": "integer",
+                                    "description": "Number of results to return (1-50)",
+                                    "minimum": 1,
+                                    "maximum": 50,
+                                    "default": 10
+                                }
+                            },
+                            "required": ["query"]
+                        }
+                    },
+                    {
+                        "name": "search_artists", 
+                        "description": "Search for artists on Spotify", 
+                        "inputSchema": {
+                            "type": "object", 
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": "Search query (artist name, genre, etc.)"
+                                },
+                                "limit": {
+                                    "type": "integer",
+                                    "description": "Number of results to return (1-50)",
+                                    "minimum": 1,
+                                    "maximum": 50,
+                                    "default": 10
+                                }
+                            },
+                            "required": ["query"]
+                        }
+                    },
+                    {
+                        "name": "get_artist_top_tracks", 
+                        "description": "Get the top tracks for a specific artist", 
+                        "inputSchema": {
+                            "type": "object", 
+                            "properties": {
+                                "artist_id": {
+                                    "type": "string",
+                                    "description": "Spotify artist ID"
+                                },
+                                "market": {
+                                    "type": "string",
+                                    "description": "Market code",
+                                    "default": "US"
+                                }
+                            },
+                            "required": ["artist_id"]
+                        }
+                    },
+                    {
+                        "name": "get_recommendations", 
+                        "description": "Get track recommendations based on artists, genres, or tracks", 
+                        "inputSchema": {
+                            "type": "object", 
+                            "properties": {
+                                "seed_artists": {
+                                    "type": "string",
+                                    "description": "Comma-separated artist IDs"
+                                },
+                                "seed_genres": {
+                                    "type": "string",
+                                    "description": "Comma-separated genre names"
+                                },
+                                "seed_tracks": {
+                                    "type": "string",
+                                    "description": "Comma-separated track IDs"
+                                },
+                                "limit": {
+                                    "type": "integer",
+                                    "description": "Number of recommendations (1-100)",
+                                    "minimum": 1,
+                                    "maximum": 100,
+                                    "default": 20
+                                }
+                            }
+                        }
+                    }
+                ]
+                return JSONResponse(content={
+                    "jsonrpc": "2.0",
+                    "id": request.get("id"),
+                    "result": {"tools": tools}
+                })
+            elif request.get("method") == "tools/call":
+                tool_name = request.get("params", {}).get("name")
+                tool_args = request.get("params", {}).get("arguments", {})
+                
+                if tool_name == "search_tracks":
+                    result = search_tracks_http(**tool_args)
+                elif tool_name == "search_artists":
+                    result = search_artists_http(**tool_args)
+                elif tool_name == "get_artist_top_tracks":
+                    result = get_artist_top_tracks_http(**tool_args)
+                elif tool_name == "get_recommendations":
+                    result = get_recommendations_http(**tool_args)
+                else:
+                    return JSONResponse(content={
+                        "jsonrpc": "2.0",
+                        "id": request.get("id"),
+                        "error": {"code": -32601, "message": f"Tool '{tool_name}' not found"}
+                    })
+                
+                return JSONResponse(content={
+                    "jsonrpc": "2.0",
+                    "id": request.get("id"),
+                    "result": {"content": [{"type": "text", "text": result}]}
+                })
+            else:
+                return JSONResponse(content={
+                    "jsonrpc": "2.0",
+                    "id": request.get("id"),
+                    "error": {"code": -32601, "message": f"Method '{request.get('method')}' not found"}
+                })
+                
+        except Exception as e:
+            return JSONResponse(
+                content={
+                    "jsonrpc": "2.0",
+                    "id": request.get("id"),
+                    "error": {"code": -32603, "message": f"Internal error: {str(e)}"}
+                }, 
+                status_code=500
+            )
+    
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

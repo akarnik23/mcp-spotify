@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: spotify-mcp
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python src/server.py
+    autoDeploy: false
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: SPOTIFY_CLIENT_ID
+        value: ""
+      - key: SPOTIFY_CLIENT_SECRET
+        value: ""
