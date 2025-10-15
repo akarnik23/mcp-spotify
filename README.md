@@ -142,44 +142,6 @@ Get the top tracks for a specific artist.
 get_artist_top_tracks("1dfeR4HaWDbWqFHLkxsg1d")  # Queen's artist ID
 ```
 
-### `get_artist_albums(artist_id, limit=20, include_groups="album,single,compilation")`
-Get albums for a specific artist.
-
-**Parameters:**
-- `artist_id` (string): Spotify artist ID
-- `limit` (int, optional): Number of results to return (1-50, default: 20)
-- `include_groups` (string, optional): Album types to include (default: "album,single,compilation")
-
-**Example:**
-```python
-get_artist_albums("1dfeR4HaWDbWqFHLkxsg1d", 10)
-```
-
-### `get_recommendations(seed_artists="", seed_genres="", seed_tracks="", limit=20)`
-Get track recommendations based on artists, genres, or tracks.
-
-**Parameters:**
-- `seed_artists` (string, optional): Comma-separated artist IDs
-- `seed_genres` (string, optional): Comma-separated genre names
-- `seed_tracks` (string, optional): Comma-separated track IDs
-- `limit` (int, optional): Number of recommendations (1-100, default: 20)
-
-**Example:**
-```python
-get_recommendations(seed_artists="1dfeR4HaWDbWqFHLkxsg1d", limit=10)
-```
-
-### `get_playlist_tracks(playlist_id, limit=20)`
-Get tracks from a specific playlist.
-
-**Parameters:**
-- `playlist_id` (string): Spotify playlist ID
-- `limit` (int, optional): Number of tracks to return (1-100, default: 20)
-
-**Example:**
-```python
-get_playlist_tracks("37i9dQZF1DXcBWIGoYBM5M", 10)  # Today's Top Hits
-```
 
 ## 🧪 Testing
 
@@ -202,14 +164,3 @@ curl -X POST http://localhost:8000/mcp \
 - **Data Format**: All responses are in JSON format for easy integration.
 - **Error Handling**: Comprehensive error handling with descriptive error messages.
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
