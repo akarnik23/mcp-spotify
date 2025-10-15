@@ -76,6 +76,10 @@ def make_spotify_request(endpoint: str, params: Dict[str, Any] = None) -> Dict[s
         print(f"Making request to: {url}")
         print(f"With params: {params}")
         print(f"With token: {token[:20]}...")
+        # Construct full URL with params for debugging
+        from urllib.parse import urlencode
+        full_url = f"{url}?{urlencode(params or {})}"
+        print(f"Full URL with params: {full_url}")
         
         response = httpx.get(
             url,
@@ -85,6 +89,7 @@ def make_spotify_request(endpoint: str, params: Dict[str, Any] = None) -> Dict[s
         )
         print(f"Response status: {response.status_code}")
         print(f"Response text: {response.text[:200]}...")
+        print(f"Response headers: {dict(response.headers)}")
         
         response.raise_for_status()
         return response.json()
@@ -210,56 +215,7 @@ def get_artist_top_tracks_http(artist_id: str, market: str = "US") -> str:
     
     return json.dumps({"tracks": formatted_tracks})
 
-def get_recommendations_http(seed_artists: str = "", seed_genres: str = "", seed_tracks: str = "", limit: int = 20, market: str = "US") -> str:
-    """Get track recommendations based on artists, genres, or tracks."""
-    # Limit to reasonable range
-    limit = max(1, min(limit, 100))
-    
-    # Build seed parameters - market is required for recommendations
-    params = {
-        "limit": limit,
-        "market": market
-    }
-    
-    if seed_artists:
-        params["seed_artists"] = seed_artists
-    if seed_genres:
-        params["seed_genres"] = seed_genres
-    if seed_tracks:
-        params["seed_tracks"] = seed_tracks
-    
-    # At least one seed is required
-    if not any([seed_artists, seed_genres, seed_tracks]):
-        return json.dumps({"error": "At least one seed (artists, genres, or tracks) is required"})
-    
-    # Debug logging
-    print(f"Recommendations request params: {params}")
-    
-    result = make_spotify_request("/recommendations", params)
-    
-    if "error" in result:
-        print(f"Recommendations error: {result}")
-        return json.dumps(result)
-    
-    # Format the response
-    tracks = result.get("tracks", [])
-    formatted_tracks = []
-    
-    for track in tracks:
-        artists = [artist["name"] for artist in track.get("artists", [])]
-        formatted_track = {
-            "name": track.get("name", "Unknown"),
-            "artists": artists,
-            "album": track.get("album", {}).get("name", "Unknown"),
-            "duration_ms": track.get("duration_ms", 0),
-            "popularity": track.get("popularity", 0),
-            "preview_url": track.get("preview_url"),
-            "external_urls": track.get("external_urls", {}),
-            "id": track.get("id")
-        }
-        formatted_tracks.append(formatted_track)
-    
-    return json.dumps({"tracks": formatted_tracks})
+# Recommendations API removed - no longer available for new Spotify apps as of November 27, 2024
 
 @mcp.tool()
 def search_tracks(query: str, limit: int = 10) -> str:
@@ -300,21 +256,8 @@ def get_artist_top_tracks(artist_id: str, market: str = "US") -> str:
     """
     return get_artist_top_tracks_http(artist_id, market)
 
-@mcp.tool()
-def get_recommendations(seed_artists: str = "", seed_genres: str = "", seed_tracks: str = "", limit: int = 20, market: str = "US") -> str:
-    """Get track recommendations based on artists, genres, or tracks.
-    
-    Args:
-        seed_artists: Comma-separated artist IDs
-        seed_genres: Comma-separated genre names
-        seed_tracks: Comma-separated track IDs
-        limit: Number of recommendations (default: 20, max: 100)
-        market: Market code (default: "US")
-    
-    Returns:
-        JSON string with recommended tracks
-    """
-    return get_recommendations_http(seed_artists, seed_genres, seed_tracks, limit, market)
+# Note: Recommendations API is no longer available for new Spotify apps as of November 27, 2024
+# See: https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api
 
 if __name__ == "__main__":
     # Run in HTTP mode for testing
@@ -419,63 +362,28 @@ if __name__ == "__main__":
                             "required": ["artist_id"]
                         }
                     },
-                             {
-                                 "name": "get_recommendations", 
-                                 "description": "Get track recommendations based on artists, genres, or tracks", 
-                                 "inputSchema": {
-                                     "type": "object", 
-                                     "properties": {
-                                         "seed_artists": {
-                                             "type": "string",
-                                             "description": "Comma-separated artist IDs"
-                                         },
-                                         "seed_genres": {
-                                             "type": "string",
-                                             "description": "Comma-separated genre names"
-                                         },
-                                         "seed_tracks": {
-                                             "type": "string",
-                                             "description": "Comma-separated track IDs"
-                                         },
-                                         "limit": {
-                                             "type": "integer",
-                                             "description": "Number of recommendations (1-100)",
-                                             "minimum": 1,
-                                             "maximum": 100,
-                                             "default": 20
-                                         },
-                                         "market": {
-                                             "type": "string",
-                                             "description": "Market code (e.g., US, GB, CA)",
-                                             "default": "US"
-                                         }
-                                     }
-                                 }
-                             }
                 ]
                 return JSONResponse(content={
                     "jsonrpc": "2.0",
                     "id": request.get("id"),
                     "result": {"tools": tools}
                 })
-            elif request.get("method") == "tools/call":
-                tool_name = request.get("params", {}).get("name")
-                tool_args = request.get("params", {}).get("arguments", {})
-                
-                if tool_name == "search_tracks":
-                    result = search_tracks_http(**tool_args)
-                elif tool_name == "search_artists":
-                    result = search_artists_http(**tool_args)
-                elif tool_name == "get_artist_top_tracks":
-                    result = get_artist_top_tracks_http(**tool_args)
-                elif tool_name == "get_recommendations":
-                    result = get_recommendations_http(**tool_args)
-                else:
-                    return JSONResponse(content={
-                        "jsonrpc": "2.0",
-                        "id": request.get("id"),
-                        "error": {"code": -32601, "message": f"Tool '{tool_name}' not found"}
-                    })
+                     elif request.get("method") == "tools/call":
+                         tool_name = request.get("params", {}).get("name")
+                         tool_args = request.get("params", {}).get("arguments", {})
+                         
+                         if tool_name == "search_tracks":
+                             result = search_tracks_http(**tool_args)
+                         elif tool_name == "search_artists":
+                             result = search_artists_http(**tool_args)
+                         elif tool_name == "get_artist_top_tracks":
+                             result = get_artist_top_tracks_http(**tool_args)
+                         else:
+                             return JSONResponse(content={
+                                 "jsonrpc": "2.0",
+                                 "id": request.get("id"),
+                                 "error": {"code": -32601, "message": f"Tool '{tool_name}' not found"}
+                             })
                 
                 return JSONResponse(content={
                     "jsonrpc": "2.0",

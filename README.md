@@ -1,15 +1,14 @@
 # Spotify MCP Server
 
-A Micro-Context Protocol (MCP) server that provides access to Spotify's music data through the Spotify Web API. Search for tracks, artists, get recommendations, and explore playlists - all through natural language conversations.
+A Micro-Context Protocol (MCP) server that provides access to Spotify's music data through the Spotify Web API. Search for tracks, artists, and get top tracks from any artist - all through natural language conversations.
 
 ## 🎵 Features
 
 - **Search Tracks**: Find songs by name, artist, or lyrics
 - **Search Artists**: Discover artists and get their information
 - **Artist Top Tracks**: Get the most popular tracks for any artist
-- **Artist Albums**: Browse an artist's discography
-- **Get Recommendations**: Get personalized music recommendations
-- **Playlist Tracks**: Explore tracks from specific playlists
+
+> **Note**: The Recommendations API is no longer available for new Spotify apps as of November 27, 2024. See [Spotify's announcement](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api) for more details.
 
 ## 🚀 Quick Start
 
