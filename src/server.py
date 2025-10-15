@@ -199,13 +199,16 @@ def get_artist_top_tracks_http(artist_id: str, market: str = "US") -> str:
     
     return json.dumps({"tracks": formatted_tracks})
 
-def get_recommendations_http(seed_artists: str = "", seed_genres: str = "", seed_tracks: str = "", limit: int = 20) -> str:
+def get_recommendations_http(seed_artists: str = "", seed_genres: str = "", seed_tracks: str = "", limit: int = 20, market: str = "US") -> str:
     """Get track recommendations based on artists, genres, or tracks."""
     # Limit to reasonable range
     limit = max(1, min(limit, 100))
     
-    # Build seed parameters
-    params = {"limit": limit}
+    # Build seed parameters - market is required for recommendations
+    params = {
+        "limit": limit,
+        "market": market
+    }
     
     if seed_artists:
         params["seed_artists"] = seed_artists
@@ -218,9 +221,13 @@ def get_recommendations_http(seed_artists: str = "", seed_genres: str = "", seed
     if not any([seed_artists, seed_genres, seed_tracks]):
         return json.dumps({"error": "At least one seed (artists, genres, or tracks) is required"})
     
+    # Debug logging
+    print(f"Recommendations request params: {params}")
+    
     result = make_spotify_request("/recommendations", params)
     
     if "error" in result:
+        print(f"Recommendations error: {result}")
         return json.dumps(result)
     
     # Format the response
@@ -283,7 +290,7 @@ def get_artist_top_tracks(artist_id: str, market: str = "US") -> str:
     return get_artist_top_tracks_http(artist_id, market)
 
 @mcp.tool()
-def get_recommendations(seed_artists: str = "", seed_genres: str = "", seed_tracks: str = "", limit: int = 20) -> str:
+def get_recommendations(seed_artists: str = "", seed_genres: str = "", seed_tracks: str = "", limit: int = 20, market: str = "US") -> str:
     """Get track recommendations based on artists, genres, or tracks.
     
     Args:
@@ -291,11 +298,12 @@ def get_recommendations(seed_artists: str = "", seed_genres: str = "", seed_trac
         seed_genres: Comma-separated genre names
         seed_tracks: Comma-separated track IDs
         limit: Number of recommendations (default: 20, max: 100)
+        market: Market code (default: "US")
     
     Returns:
         JSON string with recommended tracks
     """
-    return get_recommendations_http(seed_artists, seed_genres, seed_tracks, limit)
+    return get_recommendations_http(seed_artists, seed_genres, seed_tracks, limit, market)
 
 if __name__ == "__main__":
     # Run in HTTP mode for testing
@@ -400,34 +408,39 @@ if __name__ == "__main__":
                             "required": ["artist_id"]
                         }
                     },
-                    {
-                        "name": "get_recommendations", 
-                        "description": "Get track recommendations based on artists, genres, or tracks", 
-                        "inputSchema": {
-                            "type": "object", 
-                            "properties": {
-                                "seed_artists": {
-                                    "type": "string",
-                                    "description": "Comma-separated artist IDs"
-                                },
-                                "seed_genres": {
-                                    "type": "string",
-                                    "description": "Comma-separated genre names"
-                                },
-                                "seed_tracks": {
-                                    "type": "string",
-                                    "description": "Comma-separated track IDs"
-                                },
-                                "limit": {
-                                    "type": "integer",
-                                    "description": "Number of recommendations (1-100)",
-                                    "minimum": 1,
-                                    "maximum": 100,
-                                    "default": 20
-                                }
-                            }
-                        }
-                    }
+                             {
+                                 "name": "get_recommendations", 
+                                 "description": "Get track recommendations based on artists, genres, or tracks", 
+                                 "inputSchema": {
+                                     "type": "object", 
+                                     "properties": {
+                                         "seed_artists": {
+                                             "type": "string",
+                                             "description": "Comma-separated artist IDs"
+                                         },
+                                         "seed_genres": {
+                                             "type": "string",
+                                             "description": "Comma-separated genre names"
+                                         },
+                                         "seed_tracks": {
+                                             "type": "string",
+                                             "description": "Comma-separated track IDs"
+                                         },
+                                         "limit": {
+                                             "type": "integer",
+                                             "description": "Number of recommendations (1-100)",
+                                             "minimum": 1,
+                                             "maximum": 100,
+                                             "default": 20
+                                         },
+                                         "market": {
+                                             "type": "string",
+                                             "description": "Market code (e.g., US, GB, CA)",
+                                             "default": "US"
+                                         }
+                                     }
+                                 }
+                             }
                 ]
                 return JSONResponse(content={
                     "jsonrpc": "2.0",
