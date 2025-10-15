@@ -66,43 +66,46 @@ The server will start on `http://localhost:8000` with the MCP endpoint at `http:
 
 **Note:** Use your deployed Render URL (not localhost) for the redirect URI since Spotify requires HTTPS for security.
 
-## 🌐 Deployment on Render
+## 🚢 Deployment
 
-### Prerequisites
-
-- GitHub account
-- Spotify API credentials (see above)
-
-### Steps
-
-1. **Click the "Deploy to Render" button below** (or go to [render.com](https://render.com) and sign up/login)
-
-2. **Connect your GitHub account** if you haven't already
-
-3. **Configure the service:**
-   - **Name**: `spotify-mcp`
-   - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `python src/server.py`
-
-4. **Add environment variables:**
-   - `SPOTIFY_CLIENT_ID`: Your Spotify Client ID
-   - `SPOTIFY_CLIENT_SECRET`: Your Spotify Client Secret
-
-5. **Click "Create Web Service"**
-
-6. **Wait for deployment to complete**
-
-Your Spotify MCP server will be available at `https://spotify-mcp.onrender.com/mcp`
+### Deploy to Render
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/akarnik23/mcp-spotify)
+
+**Steps:**
+1. **Click the "Deploy to Render" button below** (or go to [render.com](https://render.com) and sign up/login)
+2. **Connect your GitHub account to Render** (if you haven't already)
+3. **Create a new Web Service:**
+   - Connect this repository
+   - **Name**: `spotify-mcp`
+   - **Environment**: `Python 3`
+   - **Plan**: `Free`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python src/server.py`
+4. **Set environment variables:**
+   - Go to your Render service dashboard
+   - Click on "Environment" tab
+   - Add:
+     - `SPOTIFY_CLIENT_ID` = `your_client_id`
+     - `SPOTIFY_CLIENT_SECRET` = `your_client_secret`
+   - Click "Save Changes"
+5. **Deploy!**
+
+> Note: On Render's free tier, services go idle after ~15 minutes of inactivity and may require a manual "Deploy" to wake or to pick up the latest commit. Unlike Vercel, pushes do not auto-deploy by default.
+
+Your server will be available at `https://spotify-mcp.onrender.com/mcp`
 
 ## 🎯 Poke Integration
 
 1. Go to [poke.com/settings/connections](https://poke.com/settings/connections)
 2. Add the MCP URL: `https://spotify-mcp.onrender.com/mcp`
 3. Give it a name like "Spotify"
-4. Test with: "Tell the subagent to use the Spotify integration's search_tracks tool"
+4. Try: "Can you use the Spotify MCP to search tracks for 'Bohemian Rhapsody'?"
+
+## References
+
+- Based on the Interaction MCP server template: [MCP Server Template](https://github.com/InteractionCo/mcp-server-template/tree/main)
+- Discovered via Interaction’s HackMIT challenge: [Interaction HackMIT Challenge](https://interaction.co/HackMIT)
 
 ## 🛠️ Available Tools
 
