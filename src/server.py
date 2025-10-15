@@ -72,20 +72,31 @@ def make_spotify_request(endpoint: str, params: Dict[str, Any] = None) -> Dict[s
         return {"error": "Unable to authenticate with Spotify API"}
     
     try:
+        url = f"{SPOTIFY_API_BASE}{endpoint}"
+        print(f"Making request to: {url}")
+        print(f"With params: {params}")
+        print(f"With token: {token[:20]}...")
+        
         response = httpx.get(
-            f"{SPOTIFY_API_BASE}{endpoint}",
+            url,
             headers={"Authorization": f"Bearer {token}"},
             params=params or {},
             timeout=15.0
         )
+        print(f"Response status: {response.status_code}")
+        print(f"Response text: {response.text[:200]}...")
+        
         response.raise_for_status()
         return response.json()
         
     except httpx.RequestError as e:
+        print(f"Request error: {str(e)}")
         return {"error": f"Request failed: {str(e)}"}
     except httpx.HTTPStatusError as e:
+        print(f"HTTP error: {e.response.status_code} - {e.response.text}")
         return {"error": f"Spotify API error: {e.response.status_code} - {e.response.text}"}
     except Exception as e:
+        print(f"Unexpected error: {str(e)}")
         return {"error": f"Unexpected error: {str(e)}"}
 
 # Undecorated functions for HTTP endpoint
