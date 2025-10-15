@@ -32,7 +32,12 @@ def get_spotify_token() -> Optional[str]:
     if access_token and time.time() < token_expires_at:
         return access_token
     
+    # Debug logging
+    print(f"SPOTIFY_CLIENT_ID: {'SET' if SPOTIFY_CLIENT_ID else 'NOT SET'}")
+    print(f"SPOTIFY_CLIENT_SECRET: {'SET' if SPOTIFY_CLIENT_SECRET else 'NOT SET'}")
+    
     if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
+        print("ERROR: Missing Spotify API credentials")
         return None
     
     try:
