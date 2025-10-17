@@ -1,6 +1,6 @@
 # Spotify MCP Server
 
-A Micro-Context Protocol (MCP) server that provides access to Spotify's music data through the Spotify Web API. Search for tracks, artists, and get top tracks from any artist - all through natural language conversations.
+A FastMCP server that provides provides access to Spotify's music data through the Spotify Web API.
 
 ## 🎵 Features
 
@@ -49,22 +49,6 @@ A Micro-Context Protocol (MCP) server that provides access to Spotify's music da
    ```
 
 The server will start on `http://localhost:8000` with the MCP endpoint at `http://localhost:8000/mcp`.
-
-## 🧩 Architecture Note (FastAPI + FastMCP Hybrid)
-
-Note: FastMCP 2.x responses didn’t work well with Poke’s client in my testing due to response format differences. The client expects simpler JSON but errors on FastMCP’s structured content with "Cannot read properties of undefined (reading 'status')". This was reproducible with Interaction’s basic FastMCP template as well.
-
-So for now, this server uses a hybrid architecture where:
-- FastAPI endpoints deliver Poke‑compatible JSON
-- `@mcp.tool()` functions exist as future‑ready wrappers
-- Shared logic lives in `_http` functions to avoid duplication
-
-To try pure FastMCP later:
-1) replace the entire FastAPI main block with `mcp.run()`,
-2) optionally move each `_http` function’s logic into the corresponding `@mcp.tool()` (or keep wrappers calling `_http`), and
-3) remove FastAPI routes if no longer needed.
-
-This works with Poke today while keeping a clean migration path to pure FastMCP.
 
 ## 🔑 Getting Spotify API Credentials
 

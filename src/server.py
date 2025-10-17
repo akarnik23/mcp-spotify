@@ -104,9 +104,20 @@ def make_spotify_request(endpoint: str, params: Dict[str, Any] = None) -> Dict[s
         print(f"Unexpected error: {str(e)}")
         return {"error": f"Unexpected error: {str(e)}"}
 
-# Undecorated functions for HTTP endpoint
-def search_tracks_http(query: str, limit: int = 10) -> str:
-    """Search for tracks on Spotify."""
+
+# Recommendations API removed - no longer available for new Spotify apps as of November 27, 2024
+
+@mcp.tool()
+def search_tracks(query: str, limit: int = 10) -> str:
+    """Search for tracks on Spotify.
+    
+    Args:
+        query: Search query (song name, artist, lyrics, etc.)
+        limit: Number of results to return (default: 10, max: 50)
+    
+    Returns:
+        JSON string with track data
+    """
     if not query.strip():
         return json.dumps({"error": "Query cannot be empty"})
     
@@ -145,8 +156,17 @@ def search_tracks_http(query: str, limit: int = 10) -> str:
         "total": result.get("tracks", {}).get("total", 0)
     })
 
-def search_artists_http(query: str, limit: int = 10) -> str:
-    """Search for artists on Spotify."""
+@mcp.tool()
+def search_artists(query: str, limit: int = 10) -> str:
+    """Search for artists on Spotify.
+    
+    Args:
+        query: Search query (artist name, genre, etc.)
+        limit: Number of results to return (default: 10, max: 50)
+    
+    Returns:
+        JSON string with artist data
+    """
     if not query.strip():
         return json.dumps({"error": "Query cannot be empty"})
     
@@ -183,8 +203,17 @@ def search_artists_http(query: str, limit: int = 10) -> str:
         "total": result.get("artists", {}).get("total", 0)
     })
 
-def get_artist_top_tracks_http(artist_id: str, market: str = "US") -> str:
-    """Get the top tracks for a specific artist."""
+@mcp.tool()
+def get_artist_top_tracks(artist_id: str, market: str = "US") -> str:
+    """Get the top tracks for a specific artist.
+    
+    Args:
+        artist_id: Spotify artist ID
+        market: Market code (default: "US")
+    
+    Returns:
+        JSON string with top tracks data
+    """
     if not artist_id.strip():
         return json.dumps({"error": "Artist ID cannot be empty"})
     
@@ -215,197 +244,14 @@ def get_artist_top_tracks_http(artist_id: str, market: str = "US") -> str:
     
     return json.dumps({"tracks": formatted_tracks})
 
-# Recommendations API removed - no longer available for new Spotify apps as of November 27, 2024
-
-@mcp.tool()
-def search_tracks(query: str, limit: int = 10) -> str:
-    """Search for tracks on Spotify.
-    
-    Args:
-        query: Search query (song name, artist, lyrics, etc.)
-        limit: Number of results to return (default: 10, max: 50)
-    
-    Returns:
-        JSON string with track data
-    """
-    return search_tracks_http(query, limit)
-
-@mcp.tool()
-def search_artists(query: str, limit: int = 10) -> str:
-    """Search for artists on Spotify.
-    
-    Args:
-        query: Search query (artist name, genre, etc.)
-        limit: Number of results to return (default: 10, max: 50)
-    
-    Returns:
-        JSON string with artist data
-    """
-    return search_artists_http(query, limit)
-
-@mcp.tool()
-def get_artist_top_tracks(artist_id: str, market: str = "US") -> str:
-    """Get the top tracks for a specific artist.
-    
-    Args:
-        artist_id: Spotify artist ID
-        market: Market code (default: "US")
-    
-    Returns:
-        JSON string with top tracks data
-    """
-    return get_artist_top_tracks_http(artist_id, market)
-
 # Note: Recommendations API is no longer available for new Spotify apps as of November 27, 2024
 # See: https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api
 
 if __name__ == "__main__":
-    # Run in HTTP mode for testing
-    import uvicorn
-    from fastapi import FastAPI
-    from fastapi.responses import JSONResponse
-    from fastapi.middleware.cors import CORSMiddleware
-    
-    # Create FastAPI app
-    app = FastAPI()
-    
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    
-    @app.get("/")
-    async def health_check():
-        return {"status": "ok", "server": "Spotify MCP Server"}
-    
-    @app.post("/")
-    @app.post("/mcp")
-    async def mcp_endpoint(request: dict):
-        """Handle MCP requests via HTTP POST"""
-        try:
-            print(f"Received request: {request}")
-            
-            if request.get("method") == "initialize":
-                return JSONResponse(content={
-                    "jsonrpc": "2.0",
-                    "id": request.get("id"),
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {"tools": {}},
-                        "serverInfo": {"name": "Spotify MCP Server", "version": "1.0.0"}
-                    }
-                })
-            elif request.get("method") == "tools/list":
-                tools = [
-                    {
-                        "name": "search_tracks", 
-                        "description": "Search for tracks on Spotify", 
-                        "inputSchema": {
-                            "type": "object", 
-                            "properties": {
-                                "query": {
-                                    "type": "string",
-                                    "description": "Search query (song name, artist, lyrics, etc.)"
-                                },
-                                "limit": {
-                                    "type": "integer",
-                                    "description": "Number of results to return (1-50)",
-                                    "minimum": 1,
-                                    "maximum": 50,
-                                    "default": 10
-                                }
-                            },
-                            "required": ["query"]
-                        }
-                    },
-                    {
-                        "name": "search_artists", 
-                        "description": "Search for artists on Spotify", 
-                        "inputSchema": {
-                            "type": "object", 
-                            "properties": {
-                                "query": {
-                                    "type": "string",
-                                    "description": "Search query (artist name, genre, etc.)"
-                                },
-                                "limit": {
-                                    "type": "integer",
-                                    "description": "Number of results to return (1-50)",
-                                    "minimum": 1,
-                                    "maximum": 50,
-                                    "default": 10
-                                }
-                            },
-                            "required": ["query"]
-                        }
-                    },
-                    {
-                        "name": "get_artist_top_tracks", 
-                        "description": "Get the top tracks for a specific artist", 
-                        "inputSchema": {
-                            "type": "object", 
-                            "properties": {
-                                "artist_id": {
-                                    "type": "string",
-                                    "description": "Spotify artist ID"
-                                },
-                                "market": {
-                                    "type": "string",
-                                    "description": "Market code",
-                                    "default": "US"
-                                }
-                            },
-                            "required": ["artist_id"]
-                        }
-                    },
-                ]
-                return JSONResponse(content={
-                    "jsonrpc": "2.0",
-                    "id": request.get("id"),
-                    "result": {"tools": tools}
-                })
-            elif request.get("method") == "tools/call":
-                tool_name = request.get("params", {}).get("name")
-                tool_args = request.get("params", {}).get("arguments", {})
-                
-                if tool_name == "search_tracks":
-                    result = search_tracks_http(**tool_args)
-                elif tool_name == "search_artists":
-                    result = search_artists_http(**tool_args)
-                elif tool_name == "get_artist_top_tracks":
-                    result = get_artist_top_tracks_http(**tool_args)
-                else:
-                    return JSONResponse(content={
-                        "jsonrpc": "2.0",
-                        "id": request.get("id"),
-                        "error": {"code": -32601, "message": f"Tool '{tool_name}' not found"}
-                    })
-                
-                return JSONResponse(content={
-                    "jsonrpc": "2.0",
-                    "id": request.get("id"),
-                    "result": {"content": [{"type": "text", "text": result}]}
-                })
-            else:
-                return JSONResponse(content={
-                    "jsonrpc": "2.0",
-                    "id": request.get("id"),
-                    "error": {"code": -32601, "message": f"Method '{request.get('method')}' not found"}
-                })
-                
-        except Exception as e:
-            return JSONResponse(
-                content={
-                    "jsonrpc": "2.0",
-                    "id": request.get("id"),
-                    "error": {"code": -32603, "message": f"Internal error: {str(e)}"}
-                }, 
-                status_code=500
-            )
-    
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    mcp.run(
+        transport="http",
+        host="0.0.0.0",
+        port=port,
+        stateless_http=True
+    )
